@@ -12,7 +12,7 @@ export const SERVICES: Service[] = [
     price: 2499,
     rating: 4.8,
     reviews: 1250,
-    image: '/uploads/ac-service.jpg',
+    image: '/uploads/ac-service.jpeg',
     category: CategoryType.AC_APPLIANCE,
     duration: '1.5 Hours'
   },
