@@ -45,6 +45,21 @@ const App: React.FC = () => {
   const [aiReasoning, setAiReasoning] = useState<string | null>(null);
   const [filteredServices, setFilteredServices] = useState<Service[]>(SERVICES);
 
+  // --- SESSION CHECK (Persistence) ---
+  useEffect(() => {
+    const savedUser = localStorage.getItem('service_on_call_auth');
+    if (savedUser) {
+      try {
+        const user = JSON.parse(savedUser);
+        setCurrentUser(user);
+        // If they were logged in, stay on dashboard or home
+        setView('DASHBOARD');
+      } catch (e) {
+        localStorage.removeItem('service_on_call_auth');
+      }
+    }
+  }, []);
+
   // --- INITIAL DATA LOAD ---
   const refreshData = async () => {
     try {
@@ -172,11 +187,13 @@ const App: React.FC = () => {
   };
 
   const handleLogin = (user: User) => {
+      localStorage.setItem('service_on_call_auth', JSON.stringify(user));
       setCurrentUser(user);
       setView('DASHBOARD');
   };
 
   const handleLogout = () => {
+      localStorage.removeItem('service_on_call_auth');
       setCurrentUser(null);
       setView('HOME');
   };
