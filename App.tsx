@@ -4,7 +4,7 @@ import {
   Menu, X, Search, MapPin, Phone, ShieldCheck, Star, Sparkles, LogIn, 
   User as UserIcon, LogOut, Loader2, Wind, Droplets, Zap, Palette, 
   Scissors, Flower2, Bug, Hammer, Car, Users, HardHat, UserCheck, 
-  Construction, Layers, Bell
+  Construction, Layers, Bell, HandHelping, ArrowLeft, Home
 } from 'lucide-react';
 import { CATEGORIES, SERVICES, TESTIMONIALS, PROVIDERS } from './constants';
 import { CategoryType, type Service, type ViewState, type User, type BookingDetails, type RegistrationForm } from './types';
@@ -46,6 +46,39 @@ const App: React.FC = () => {
   const [aiReasoning, setAiReasoning] = useState<string | null>(null);
   const [filteredServices, setFilteredServices] = useState<Service[]>(SERVICES);
 
+  // --- MOBILE BACK BUTTON NAVIGATION ---
+  useEffect(() => {
+    // Push initial state
+    if (window.history.state?.view !== view) {
+      window.history.pushState({ view: view }, "");
+    }
+
+    const handlePopState = (event: PopStateEvent) => {
+      if (view === 'HOME') {
+        const exit = window.confirm("Do you want to exit the app?");
+        if (!exit) {
+          window.history.pushState({ view: 'HOME' }, "");
+        } else {
+          // In a real APK environment, we might call a native close. 
+          // For web, we can try window.close() but browsers often block it.
+          window.close();
+        }
+      } else {
+        const previousView = event.state?.view || 'HOME';
+        setView(previousView);
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [view]);
+
+  const navigateTo = (newView: ViewState) => {
+    window.history.pushState({ view: newView }, "");
+    setView(newView);
+    window.scrollTo(0, 0);
+  };
+
   // --- INITIAL DATA LOAD ---
   const refreshData = async () => {
     try {
@@ -67,23 +100,24 @@ const App: React.FC = () => {
   // --- Helpers ---
 
   const getCategoryIcon = (category: CategoryType) => {
+    const size = 56; // Increased icon size as requested
     switch (category) {
-      case CategoryType.AC_APPLIANCE: return <Wind size={24} />;
-      case CategoryType.CLEANING: return <Sparkles size={24} />;
-      case CategoryType.PLUMBING: return <Droplets size={24} />;
-      case CategoryType.ELECTRICIAN: return <Zap size={24} />;
-      case CategoryType.PAINTING: return <Palette size={24} />;
-      case CategoryType.BEAUTY_MEN: return <Scissors size={24} />;
-      case CategoryType.BEAUTY_WOMEN: return <Flower2 size={24} />;
-      case CategoryType.PEST_CONTROL: return <Bug size={24} />;
-      case CategoryType.CARPENTRY: return <Hammer size={24} />;
-      case CategoryType.CAR_RENTAL: return <Car size={24} />;
-      case CategoryType.LABOUR: return <Users size={24} />;
-      case CategoryType.MISTRI: return <HardHat size={24} />;
-      case CategoryType.HOUSE_HELPER: return <UserCheck size={24} />;
-      case CategoryType.WELDING: return <Construction size={24} />;
-      case CategoryType.ROOF_PANEL: return <Layers size={24} />;
-      default: return <Sparkles size={24} />;
+      case CategoryType.AC_APPLIANCE: return <Wind size={size} className="text-blue-500" />;
+      case CategoryType.CLEANING: return <Sparkles size={size} className="text-blue-400" />;
+      case CategoryType.PLUMBING: return <Droplets size={size} className="text-blue-600" />;
+      case CategoryType.ELECTRICIAN: return <Zap size={size} className="text-yellow-500" />;
+      case CategoryType.PAINTING: return <Palette size={size} className="text-orange-500" />;
+      case CategoryType.BEAUTY_MEN: return <Scissors size={size} className="text-slate-700" />;
+      case CategoryType.BEAUTY_WOMEN: return <Flower2 size={size} className="text-pink-500" />;
+      case CategoryType.PEST_CONTROL: return <Bug size={size} className="text-green-700" />;
+      case CategoryType.CARPENTRY: return <Hammer size={size} className="text-amber-800" />;
+      case CategoryType.CAR_RENTAL: return <Car size={size} className="text-indigo-600" />;
+      case CategoryType.LABOUR: return <Users size={size} className="text-slate-600" />;
+      case CategoryType.MISTRI: return <HardHat size={size} className="text-yellow-600" />;
+      case CategoryType.HOUSE_HELPER: return <HandHelping size={size} className="text-rose-400" />;
+      case CategoryType.WELDING: return <Construction size={size} className="text-slate-500" />;
+      case CategoryType.ROOF_PANEL: return <Layers size={size} className="text-cyan-600" />;
+      default: return <Sparkles size={size} />;
     }
   };
 
@@ -174,31 +208,26 @@ const App: React.FC = () => {
 
   const handleLogin = (user: User) => {
       setCurrentUser(user);
-      setView('DASHBOARD');
+      navigateTo('DASHBOARD');
   };
 
   const handleLogout = () => {
       setCurrentUser(null);
-      setView('HOME');
+      navigateTo('HOME');
   };
 
   const handleCategorySelect = (category: CategoryType) => {
     setSelectedCategory(category);
     setFilteredServices(SERVICES.filter(s => s.category === category));
     setAiReasoning(null);
-    setView('CATEGORY');
-    window.scrollTo(0, 0);
+    navigateTo('CATEGORY');
   };
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!searchQuery.trim()) {
-        setView('HOME');
-        return;
-    }
+    if (!searchQuery.trim()) return;
 
     setIsSearching(true);
-    setView('SEARCH_RESULTS');
     const recommendation = await getServiceRecommendation(searchQuery);
     
     if (recommendation.suggestedServiceIds.length > 0) {
@@ -235,16 +264,12 @@ const App: React.FC = () => {
     if (newView === 'DASHBOARD' && !currentUser) {
       setIsLoginOpen(true);
     } else {
-      setView(newView);
-      window.scrollTo(0, 0);
+      if (newView === 'SEARCH_RESULTS') {
+          setFilteredServices([]);
+          setAiReasoning(null);
+      }
+      navigateTo(newView);
     }
-  };
-
-  const getRelevantProviders = () => {
-    if (view === 'CATEGORY' && selectedCategory) {
-      return PROVIDERS.filter(p => p.categories.includes(selectedCategory));
-    }
-    return PROVIDERS.slice(0, 4);
   };
 
   if (isLoadingData) {
@@ -260,17 +285,12 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen flex flex-col bg-white overflow-x-hidden">
-      {/* 
-         Black Spacer / Safe Area Line: 
-         This ensures the app starts below the system status bar (time/tower).
-      */}
       <div className="bg-black h-safe-top sticky top-0 z-50 w-full" />
       
-      {/* App Header / Top Bar (Native Mobile Style) */}
       <header className="bg-white sticky top-[env(safe-area-inset-top)] z-40 px-4 h-14 flex items-center justify-between border-b border-slate-100">
         <div 
           className="flex items-center gap-2 cursor-pointer" 
-          onClick={() => { setView('HOME'); setSelectedCategory(null); setSearchQuery(''); }}
+          onClick={() => navigateTo('HOME')}
         >
           <div className="bg-accent w-7 h-7 rounded-lg flex items-center justify-center text-white">
             <Phone size={14} fill="currentColor" />
@@ -288,9 +308,7 @@ const App: React.FC = () => {
         </div>
       </header>
 
-      {/* Main Content Area */}
       <main className="flex-1 pb-20 relative">
-        {/* Progress Overlay for DB Operations */}
         {isActionInProgress && (
             <div className="fixed inset-0 bg-white/40 backdrop-blur-[1px] z-50 flex items-center justify-center">
                 <div className="bg-white p-6 rounded-2xl shadow-2xl flex flex-col items-center gap-4 border border-slate-100 animate-in fade-in zoom-in duration-200">
@@ -300,7 +318,6 @@ const App: React.FC = () => {
             </div>
         )}
         
-        {/* DASHBOARD VIEW */}
         {view === 'DASHBOARD' && currentUser && (
             currentUser.role === 'ADMIN' ? (
                 <AdminDashboard 
@@ -320,65 +337,100 @@ const App: React.FC = () => {
             )
         )}
 
-        {/* Search Hero Section (Always visible or contextual) */}
-        {view !== 'ABOUT_US' && view !== 'REGISTER_PROFESSIONAL' && view !== 'DASHBOARD' && (
-        <div className={`bg-primary text-white transition-all duration-300 ${view === 'HOME' ? 'pt-8 pb-12' : 'py-6'}`}>
-          <div className="container mx-auto px-4">
-            {view === 'HOME' && (
-              <div className="mb-6">
-                <h1 className="text-2xl font-bold leading-tight">Home services at the tap of a button.</h1>
-              </div>
-            )}
-            
-            <form onSubmit={handleSearch} className="relative">
-              <input 
-                type="text" 
-                placeholder="Search for 'Plumber' or 'Cleaner'..." 
-                className="w-full h-12 pl-11 pr-4 rounded-xl text-slate-900 outline-none focus:ring-2 focus:ring-accent/50 shadow-md placeholder-slate-400 text-sm"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-              <Search className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-slate-400" size={18} />
-              <button 
-                type="submit" 
-                className="absolute right-1 top-1 bottom-1 bg-accent text-white px-4 rounded-lg text-xs font-bold"
-              >
-                {isSearching ? '...' : 'Search'}
-              </button>
-            </form>
-          </div>
-        </div>
+        {/* View: SEARCH (Search is now exclusively here as requested) */}
+        {view === 'SEARCH_RESULTS' && (
+            <div className="container mx-auto px-4 pt-6 animate-in slide-in-from-bottom-4 duration-300">
+                <button 
+                  onClick={() => navigateTo('HOME')}
+                  className="mb-4 flex items-center gap-2 text-accent font-bold text-sm"
+                >
+                  <ArrowLeft size={16} /> Back to Home
+                </button>
+
+                <div className="mb-8">
+                    <h2 className="text-2xl font-bold text-slate-900 mb-4">What can we help with?</h2>
+                    <form onSubmit={handleSearch} className="relative">
+                      <input 
+                        type="text" 
+                        placeholder="Search for service e.g. Plumber..." 
+                        className="w-full h-14 pl-12 pr-4 rounded-2xl bg-slate-100 text-slate-900 outline-none focus:ring-2 focus:ring-accent/50 placeholder-slate-400 text-base shadow-inner"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        autoFocus
+                      />
+                      <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-400" size={24} />
+                    </form>
+                </div>
+
+                {isSearching ? (
+                   <div className="flex flex-col items-center py-20 text-slate-400">
+                      <Loader2 className="animate-spin mb-4" size={32} />
+                      <p>AI is finding best services for you...</p>
+                   </div>
+                ) : (
+                  <section className="pb-8">
+                    {aiReasoning && (
+                        <div className="mb-6 bg-blue-50 text-blue-800 px-4 py-4 rounded-2xl text-sm leading-relaxed border border-blue-100">
+                            <Sparkles size={16} className="inline mr-2 text-accent" />
+                            {aiReasoning}
+                        </div>
+                    )}
+
+                    <div className="grid grid-cols-1 gap-5">
+                        {filteredServices.length > 0 ? (
+                            filteredServices.map(service => (
+                                <ServiceCard key={service.id} service={service} onBook={handleBookService} />
+                            ))
+                        ) : searchQuery && (
+                            <div className="text-center py-20">
+                                <Search className="text-slate-200 mx-auto mb-3" size={60} />
+                                <h3 className="font-bold text-slate-400">Search for a specific service</h3>
+                            </div>
+                        )}
+                    </div>
+                  </section>
+                )}
+            </div>
         )}
 
         {/* View: HOME */}
         {view === 'HOME' && (
           <div className="animate-in slide-in-from-bottom-2 duration-300">
-            {/* Categories Grid - Mobile Optimized (3 columns) */}
+            <div className="bg-primary text-white pt-8 pb-10">
+              <div className="container mx-auto px-4">
+                <h1 className="text-3xl font-bold leading-tight mb-2">Home services at your doorstep.</h1>
+                <p className="text-slate-400 text-sm">Organized services for semi-urban & rural cities.</p>
+              </div>
+            </div>
+
+            {/* Categories Grid - 2 icons per row, increased size */}
             <section className="py-8 container mx-auto px-4">
-              <h2 className="text-lg font-extrabold text-slate-800 mb-5">Browse Categories</h2>
-              <div className="grid grid-cols-3 gap-3">
+              <h2 className="text-xl font-extrabold text-slate-800 mb-6 flex items-center gap-2">
+                <Sparkles size={20} className="text-accent" /> Our Services
+              </h2>
+              <div className="grid grid-cols-2 gap-4">
                 {CATEGORIES.map((cat, idx) => (
                   <div 
                     key={idx}
                     onClick={() => handleCategorySelect(cat)}
-                    className="bg-slate-50 p-4 rounded-2xl hover:bg-white hover:shadow-md transition-all cursor-pointer flex flex-col items-center text-center gap-2 border border-slate-100 active:scale-95"
+                    className="bg-white p-6 rounded-[2.5rem] hover:shadow-xl transition-all cursor-pointer flex flex-col items-center text-center gap-4 border border-slate-100 active:scale-95 shadow-sm"
                   >
-                     <div className="text-accent flex items-center justify-center">
+                     <div className="p-4 bg-slate-50 rounded-3xl group-hover:bg-white transition-colors">
                         {getCategoryIcon(cat)}
                      </div>
-                     <span className="text-[10px] font-bold text-slate-700 leading-tight line-clamp-2">{cat}</span>
+                     <span className="text-xs font-extrabold text-slate-800 leading-tight uppercase tracking-tight">{cat}</span>
                   </div>
                 ))}
               </div>
             </section>
 
-            {/* Featured Services (Horizontal Scroll on Mobile) */}
+            {/* Trending Carousel */}
             <section className="py-8 bg-slate-50 overflow-hidden">
                 <div className="container mx-auto px-4">
-                    <h2 className="text-lg font-extrabold text-slate-800 mb-5">Popular Services</h2>
+                    <h2 className="text-xl font-extrabold text-slate-800 mb-5">Popular Now</h2>
                     <div className="flex overflow-x-auto gap-4 no-scrollbar pb-4 -mx-4 px-4">
-                        {SERVICES.slice(0, 6).map(service => (
-                            <div key={service.id} className="min-w-[280px] max-w-[280px]">
+                        {SERVICES.slice(0, 8).map(service => (
+                            <div key={service.id} className="min-w-[280px]">
                                 <ServiceCard service={service} onBook={handleBookService} />
                             </div>
                         ))}
@@ -386,28 +438,15 @@ const App: React.FC = () => {
                 </div>
             </section>
 
-            {/* Expert Providers */}
-            <section className="py-8 bg-white">
-              <div className="container mx-auto px-4">
-                <h2 className="text-lg font-extrabold text-slate-800 mb-5">Top Professionals</h2>
-                <div className="flex overflow-x-auto gap-4 no-scrollbar -mx-4 px-4 pb-2">
-                    {getRelevantProviders().map(provider => (
-                        <div key={provider.id} className="min-w-[200px]">
-                          <ProviderCard provider={provider} />
-                        </div>
-                    ))}
-                </div>
-              </div>
-            </section>
-
             {/* Registration Banner */}
-            <section className="py-8 px-4">
-               <div className="bg-slate-900 rounded-3xl p-6 text-white text-center shadow-xl">
-                  <h3 className="text-xl font-bold mb-2">Want to work with us?</h3>
-                  <p className="text-slate-400 text-sm mb-5">Join 500+ partners and earn more monthly.</p>
+            <section className="py-8 px-4 mb-4">
+               <div className="bg-slate-900 rounded-[3rem] p-10 text-white text-center shadow-2xl relative overflow-hidden">
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-accent opacity-10 rounded-full blur-3xl -mr-16 -mt-16"></div>
+                  <h3 className="text-2xl font-bold mb-3">Join as a Partner</h3>
+                  <p className="text-slate-400 text-sm mb-8 px-4 leading-relaxed">Grow your skills and income by working with Service on Call.</p>
                   <button 
-                    onClick={() => setView('REGISTER_PROFESSIONAL')}
-                    className="bg-accent px-6 py-2.5 rounded-xl font-bold text-sm"
+                    onClick={() => navigateTo('REGISTER_PROFESSIONAL')}
+                    className="bg-accent w-full py-4 rounded-2xl font-bold text-base shadow-lg shadow-accent/20 active:bg-accent-hover"
                   >
                     Register Now
                   </button>
@@ -416,59 +455,57 @@ const App: React.FC = () => {
           </div>
         )}
 
-        {/* View: CATEGORY or SEARCH RESULTS */}
-        {(view === 'CATEGORY' || view === 'SEARCH_RESULTS') && (
+        {/* View: CATEGORY */}
+        {view === 'CATEGORY' && (
             <div className="container mx-auto px-4 animate-in slide-in-from-right-4 duration-300">
                 <section className="py-8 min-h-[50vh]">
-                    <div className="mb-6">
-                        <h2 className="text-xl font-extrabold text-slate-800">
-                            {view === 'SEARCH_RESULTS' ? `Search Results` : selectedCategory}
+                    <button 
+                      onClick={() => navigateTo('HOME')}
+                      className="mb-6 flex items-center gap-2 text-accent font-bold text-sm"
+                    >
+                      <ArrowLeft size={16} /> Back to Home
+                    </button>
+
+                    <div className="mb-8 flex items-center justify-between">
+                        <h2 className="text-3xl font-extrabold text-slate-800">
+                            {selectedCategory}
                         </h2>
-                        {aiReasoning && (
-                            <div className="mt-3 bg-blue-50 text-blue-800 px-4 py-3 rounded-xl text-xs leading-relaxed border border-blue-100">
-                                <Sparkles size={14} className="inline mr-1 text-accent" />
-                                {aiReasoning}
-                            </div>
-                        )}
+                        <div className="bg-slate-50 p-3 rounded-2xl text-slate-400">
+                           {selectedCategory && getCategoryIcon(selectedCategory)}
+                        </div>
                     </div>
 
                     <div className="grid grid-cols-1 gap-5">
-                        {filteredServices.length > 0 ? (
-                            filteredServices.map(service => (
-                                <ServiceCard key={service.id} service={service} onBook={handleBookService} />
-                            ))
-                        ) : (
-                            <div className="text-center py-20 bg-slate-50 rounded-2xl">
-                                <Search className="text-slate-300 mx-auto mb-3" size={40} />
-                                <h3 className="font-bold text-slate-600">No services found</h3>
-                                <button 
-                                    onClick={() => setView('HOME')} 
-                                    className="mt-4 text-accent font-bold text-sm"
-                                >
-                                    Browse All Services
-                                </button>
-                            </div>
-                        )}
+                        {filteredServices.map(service => (
+                            <ServiceCard key={service.id} service={service} onBook={handleBookService} />
+                        ))}
                     </div>
                 </section>
             </div>
         )}
 
-        {/* View: REGISTER PROFESSIONAL */}
         {view === 'REGISTER_PROFESSIONAL' && (
-            <RegisterProfessional onSubmit={handleRegistrationSubmit} />
+            <div className="animate-in slide-in-from-bottom-4 duration-300">
+              <div className="px-4 py-4">
+                <button 
+                    onClick={() => navigateTo('HOME')}
+                    className="flex items-center gap-2 text-accent font-bold text-sm"
+                  >
+                    <ArrowLeft size={16} /> Back to Home
+                  </button>
+              </div>
+              <RegisterProfessional onSubmit={handleRegistrationSubmit} />
+            </div>
         )}
 
       </main>
 
-      {/* Footer / Bottom Nav Bar */}
       <MobileBottomNav 
         currentView={view} 
         onNavigate={handleBottomNavNavigate} 
         isLoggedIn={!!currentUser} 
       />
 
-      {/* Modals */}
       {selectedService && (
         <BookingModal 
           service={selectedService} 
