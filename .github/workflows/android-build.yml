@@ -26,6 +26,11 @@ jobs:
           VITE_GOOGLE_API_KEY: ${{ secrets.VITE_GOOGLE_API_KEY }}
         run: npm run build
 
+      - name: Sync Capacitor
+        # This generates the missing 'capacitor-cordova-android-plugins' folder 
+        # and 'cordova.variables.gradle' file required by Gradle
+        run: npx cap sync android
+
       - name: Build Android APK
         run: |
           cd android
