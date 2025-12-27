@@ -9,34 +9,44 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # 1. Force the use of Node.js 22 to satisfy Capacitor CLI requirements
+      - name: Set up Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      # 2. Set up Java for the Android build
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
 
+      # 3. Install project dependencies
       - name: Install Dependencies
         run: npm install
 
+      # 4. Build the Web Project with your API keys
       - name: Build Web Project
-        # Injecting secrets so Vite can include them in the static build
         env:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
           VITE_GOOGLE_API_KEY: ${{ secrets.VITE_GOOGLE_API_KEY }}
         run: npm run build
 
+      # 5. Sync Capacitor (this now has the correct Node version)
       - name: Sync Capacitor
-        # This generates the missing 'capacitor-cordova-android-plugins' folder 
-        # and 'cordova.variables.gradle' file required by Gradle
         run: npx cap sync android
 
+      # 6. Finally build the APK
       - name: Build Android APK
         run: |
           cd android
           chmod +x gradlew
           ./gradlew assembleDebug
 
+      # 7. Make the file downloadable
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
