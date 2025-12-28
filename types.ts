@@ -23,10 +23,10 @@ export type UserRole = 'ADMIN' | 'PROVIDER';
 
 export interface User {
   username: string;
-  password?: string; // In a real app, this would be hashed or handled by auth provider
+  password?: string;
   role: UserRole;
   name: string;
-  category?: CategoryType; // Only for providers
+  category?: CategoryType;
 }
 
 export interface Service {
@@ -75,7 +75,8 @@ export interface BookingDetails {
   price: number;
   status: BookingStatus;
   createdAt: string;
-  providerId?: string; // Username of the assigned provider
+  providerId?: string; 
+  paymentMethod?: 'RAZORPAY' | 'CASH';
 }
 
 export interface RegistrationForm {
@@ -88,4 +89,4 @@ export interface RegistrationForm {
   submittedAt: string;
 }
 
-export type ViewState = 'HOME' | 'CATEGORY' | 'SEARCH_RESULTS' | 'ABOUT_US' | 'REGISTER_PROFESSIONAL' | 'DASHBOARD';
+export type ViewState = 'HOME' | 'CATEGORY' | 'SEARCH_RESULTS' | 'ABOUT_US' | 'REGISTER_PROFESSIONAL' | 'DASHBOARD' | 'BOOKINGS' | 'PAYMENT';

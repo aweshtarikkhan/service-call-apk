@@ -5,35 +5,44 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#000000" />
-    <title>Service on Call</title>
+    <title>Service on Call | Urban Company Style</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
       tailwind.config = {
         theme: {
           extend: {
             colors: {
-              primary: '#0F172A',
-              secondary: '#334155',
-              accent: '#2563EB',
-              'accent-hover': '#1D4ED8',
+              primary: '#000000',
+              secondary: '#FFFFFF',
+              accent: '#6739B7', // Urban Company Purple
+              'accent-hover': '#512DA8',
+              'uc-grey': '#F5F5F5',
+              'uc-text-light': '#757575',
+            },
+            borderRadius: {
+              'uc': '16px',
             }
           }
         }
       }
     </script>
     <style>
+      @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
       body { 
         font-family: 'Inter', sans-serif; 
         -webkit-tap-highlight-color: transparent;
         overscroll-behavior-y: contain;
+        background-color: #FFFFFF;
       }
       .no-scrollbar::-webkit-scrollbar { display: none; }
       .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-      
-      /* Safe area utilities for APK/PWA */
-      .pt-safe { padding-top: env(safe-area-inset-top); }
-      .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+      .safe-top { padding-top: env(safe-area-inset-top); }
+      .safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
       .h-safe-top { height: env(safe-area-inset-top); }
+      
+      /* UC Style Button Shadow */
+      .uc-shadow { box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+      .uc-card-shadow { box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
     </style>
   <script type="importmap">
 {
@@ -50,9 +59,8 @@
   }
 }
 </script>
-<link rel="stylesheet" href="/index.css">
 </head>
-  <body class="bg-slate-50 text-slate-900">
+  <body class="bg-white text-slate-900">
     <div id="root"></div>
     <script type="module" src="/index.tsx"></script>
   </body>
