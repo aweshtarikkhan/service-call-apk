@@ -1,6 +1,5 @@
-
-import React, { useState } from 'react';
-import type { Service, BookingDetails, CategoryType } from '../types';
+import React, { useState, useEffect } from 'react';
+import type { Service, BookingDetails, CategoryType, User as UserType } from '../types'; // Renamed to avoid conflict with Lucide icon
 import { X, Calendar, Clock, MapPin, User, Phone, CheckCircle } from 'lucide-react';
 
 interface BookingModalProps {
@@ -8,9 +7,10 @@ interface BookingModalProps {
   isOpen: boolean;
   onClose: () => void;
   onConfirmBooking: (details: Omit<BookingDetails, 'id' | 'createdAt' | 'status'>) => Promise<void>;
+  currentUser: UserType | null; // Added currentUser
 }
 
-const BookingModal: React.FC<BookingModalProps> = ({ service, isOpen, onClose, onConfirmBooking }) => {
+const BookingModal: React.FC<BookingModalProps> = ({ service, isOpen, onClose, onConfirmBooking, currentUser }) => {
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -21,9 +21,19 @@ const BookingModal: React.FC<BookingModalProps> = ({ service, isOpen, onClose, o
     phone: ''
   });
 
+  // Pre-fill form when the modal opens or currentUser changes
+  useEffect(() => {
+    if (isOpen && currentUser) {
+      setFormData(prev => ({
+        ...prev,
+        name: currentUser.name || '',
+        phone: currentUser.phone || ''
+      }));
+    }
+  }, [isOpen, currentUser]);
+
   if (!isOpen) return null;
 
-  // Get today's date in YYYY-MM-DD format for the 'min' attribute
   const today = new Date().toISOString().split('T')[0];
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -46,7 +56,7 @@ const BookingModal: React.FC<BookingModalProps> = ({ service, isOpen, onClose, o
         customerPhone: formData.phone,
         price: service.price
       });
-      setStep(3); // Success state
+      setStep(3);
     } catch (err) {
       alert("Something went wrong. Please try again.");
     } finally {
