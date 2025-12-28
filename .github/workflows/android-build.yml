@@ -1,55 +1,87 @@
 name: Android Build
 on:
   push:
-    branches: [ main ] # Runs every time you push to the main branch
+    branches: [ main ]
 
 jobs:
+  # THIS IS YOUR ORIGINAL WORKING CODE - DO NOT CHANGE THIS
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      # 1. Set up Node.js 22 (Required for Capacitor CLI)
       - name: Set up Node.js 22
         uses: actions/setup-node@v4
         with:
           node-version: '22'
           cache: 'npm'
-
-      # 2. Set up JDK 21 (Required for Capacitor 7/Android compilation)
       - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '21'
-          cache: 'gradle' # Helps speed up future builds
-
-      # 3. Install project dependencies
+          cache: 'gradle'
       - name: Install Dependencies
         run: npm install
-
-      # 4. Build the Web Project with your API keys
       - name: Build Web Project
         env:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
           VITE_GOOGLE_API_KEY: ${{ secrets.VITE_GOOGLE_API_KEY }}
         run: npm run build
-
-      # 5. Sync Capacitor
       - name: Sync Capacitor
         run: npx cap sync android
-
-      # 6. Build the APK using the correct Java 21 environment
       - name: Build Android APK
         run: |
           cd android
           chmod +x gradlew
           ./gradlew assembleDebug
-
-      # 7. Upload the final APK
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: app-debug
           path: android/app/build/outputs/apk/debug/app-debug.apk
+
+  # THIS IS THE NEW RELEASE JOB - RUNS SEPARATELY SO IT WON'T BREAK YOUR DEBUG BUILD
+  release_build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+          cache: 'gradle'
+      - name: Install Dependencies
+        run: npm install
+      - name: Build Web Project
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          VITE_GOOGLE_API_KEY: ${{ secrets.VITE_GOOGLE_API_KEY }}
+        run: npm run build
+      - name: Sync Capacitor
+        run: npx cap sync android
+
+      - name: Decode and Build Signed Release APK
+        # This step handles the 'massive text' keystore and signs the app
+        run: |
+          cd android
+          echo "${{ secrets.ANDROID_KEYSTORE_CONTENT }}" | base64 --decode > release-key.jks
+          chmod +x gradlew
+          ./gradlew assembleRelease \
+            -Pandroid.injected.signing.store.file=$(pwd)/release-key.jks \
+            -Pandroid.injected.signing.store.password=${{ secrets.ANDROID_KEYSTORE_PASSWORD }} \
+            -Pandroid.injected.signing.key.alias=${{ secrets.ANDROID_KEY_ALIAS }} \
+            -Pandroid.injected.signing.key.password=${{ secrets.ANDROID_KEY_PASSWORD }}
+
+      - name: Upload Signed Release APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release-signed
+          path: android/app/build/outputs/apk/release/app-release.apk
