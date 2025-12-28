@@ -3,7 +3,8 @@ import React, { useState, useEffect } from 'react';
 import { 
   Search, MapPin, Phone, Star, Sparkles, LogOut, Loader2, Wind, Droplets, Zap, Palette, 
   Scissors, Flower2, Bug, Hammer, Car, Users, HardHat, HandHelping, 
-  Construction, Layers, Bell, ChevronDown, Plus, ArrowLeft, Heart, ShieldCheck, Calendar, Clock, CheckCircle2, AlertCircle, CreditCard, Banknote, ChevronRight
+  Construction, Layers, Bell, ChevronDown, Plus, ArrowLeft, Heart, ShieldCheck, Calendar, Clock, CheckCircle2, AlertCircle, CreditCard, Banknote, ChevronRight, User as UserIcon,
+  Lock, ChevronLeft, Wrench
 } from 'lucide-react';
 import { CATEGORIES, SERVICES, PROVIDERS } from './constants';
 import { CategoryType, type Service, type ViewState, type User, type BookingDetails, type RegistrationForm } from './types';
@@ -34,7 +35,6 @@ const App: React.FC = () => {
   const [selectedService, setSelectedService] = useState<Service | null>(null);
   const [isBookingOpen, setIsBookingOpen] = useState(false);
   
-  // Payment Flow State
   const [pendingBookingDetails, setPendingBookingDetails] = useState<Omit<BookingDetails, 'id' | 'createdAt' | 'status'> | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<'RAZORPAY' | 'CASH'>('CASH');
   
@@ -44,7 +44,19 @@ const App: React.FC = () => {
 
   const [notification, setNotification] = useState<{title: string, body: string} | null>(null);
 
-  // --- SIMULATED NOTIFICATION LOGIC ---
+  // Slider State
+  const heroServices = SERVICES.filter(s => s.isHero);
+  const [currentHeroIndex, setCurrentHeroIndex] = useState(0);
+
+  useEffect(() => {
+    if (view === 'HOME') {
+      const timer = setInterval(() => {
+        setCurrentHeroIndex((prev) => (prev + 1) % heroServices.length);
+      }, 5000);
+      return () => clearInterval(timer);
+    }
+  }, [view, heroServices.length]);
+
   useEffect(() => {
     const checkAssignments = () => {
         const assigned = bookings.find(b => b.status === 'ASSIGNED');
@@ -59,7 +71,6 @@ const App: React.FC = () => {
     checkAssignments();
   }, [bookings.length, bookings.filter(b => b.status === 'ASSIGNED').length]);
 
-  // --- NATIVE BACK BUTTON LOGIC ---
   useEffect(() => {
     const handlePopState = (event: PopStateEvent) => {
       if (view === 'HOME') {
@@ -80,6 +91,14 @@ const App: React.FC = () => {
   }, [view]);
 
   const navigateTo = (newView: ViewState) => {
+    if (newView === 'DASHBOARD' && !currentUser) {
+      setIsLoginOpen(true);
+      return;
+    }
+    if (newView === 'BOOKINGS' && !currentUser) {
+      setIsLoginOpen(true);
+      return;
+    }
     setView(newView);
     window.history.pushState({ view: newView }, "");
     window.scrollTo(0, 0);
@@ -102,6 +121,17 @@ const App: React.FC = () => {
     refreshData();
   }, []);
 
+  const getVisibleBookings = () => {
+    if (!currentUser) return [];
+    if (currentUser.role === 'ADMIN') return bookings;
+    if (currentUser.role === 'PROVIDER') {
+        return bookings.filter(b => b.providerId === currentUser.username || (b.status === 'PENDING' && b.category === currentUser.category));
+    }
+    return bookings.filter(b => b.customerPhone === currentUser.phone);
+  };
+
+  const visibleBookings = getVisibleBookings();
+
   const getCategoryIcon = (category: CategoryType) => {
     const size = 32; 
     switch (category) {
@@ -120,6 +150,7 @@ const App: React.FC = () => {
       case CategoryType.HOUSE_HELPER: return <HandHelping size={size} className="text-[#F06292]" />;
       case CategoryType.WELDING: return <Construction size={size} className="text-[#455A64]" />;
       case CategoryType.ROOF_PANEL: return <Layers size={size} className="text-[#009688]" />;
+      case CategoryType.MECHANIC: return <Wrench size={size} className="text-[#607D8B]" />;
       default: return <Sparkles size={size} />;
     }
   };
@@ -140,6 +171,13 @@ const App: React.FC = () => {
           await api.createBooking(finalBooking);
           await refreshData();
           setPendingBookingDetails(null);
+          if (!currentUser) {
+              setCurrentUser({
+                name: finalBooking.customerName,
+                phone: finalBooking.customerPhone,
+                role: 'CUSTOMER'
+              });
+          }
           navigateTo('BOOKINGS');
       } catch (err) {
           alert("Payment/Booking failed. Please try again.");
@@ -197,120 +235,299 @@ const App: React.FC = () => {
           </div>
       )}
 
-      {/* Header (Hidden on Payment Page for focus) */}
       {view !== 'PAYMENT' && (
-        <header className="bg-white sticky top-[calc(env(safe-area-inset-top)+32px)] z-40 px-4 h-16 flex items-center justify-between border-b border-slate-50">
+        <header className="bg-white sticky top-[calc(env(safe-area-inset-top)+32px)] z-40 px-6 h-16 flex items-center justify-between border-b border-slate-50">
             <div className="flex flex-col cursor-pointer" onClick={() => navigateTo('HOME')}>
-            <div className="flex items-center gap-1">
-                <span className="font-extrabold text-sm uppercase tracking-tight">Kotma</span>
-                <ChevronDown size={14} className="text-accent" />
-            </div>
-            <span className="text-[11px] text-slate-500 font-medium truncate max-w-[180px]">
-                Anuppur, Madhya Pradesh
-            </span>
-            </div>
-
-            <div className="flex items-center gap-4">
-              {currentUser ? (
-                <div className="flex items-center gap-2" onClick={() => navigateTo('DASHBOARD')}>
-                   <div className="w-8 h-8 rounded-full bg-accent/10 flex items-center justify-center text-accent text-xs font-bold">
-                     {currentUser.name.charAt(0)}
-                   </div>
+                <div className="flex items-center gap-1">
+                    <span className="font-extrabold text-sm uppercase tracking-tighter">Kotma</span>
+                    <ChevronDown size={14} className="text-accent" />
                 </div>
-              ) : (
-                <Bell size={22} className="text-slate-800" />
-              )}
+                <span className="text-[11px] text-slate-500 font-bold truncate max-w-[200px]">
+                    Anuppur, Madhya Pradesh
+                </span>
+            </div>
+            
+            <div className="flex items-center gap-4">
+                {currentUser && (
+                    <button 
+                        onClick={() => { setCurrentUser(null); navigateTo('HOME'); }}
+                        className="hidden md:flex items-center gap-2 text-xs font-black text-red-500 uppercase tracking-widest bg-red-50 px-4 py-2 rounded-full border border-red-100"
+                    >
+                        <LogOut size={14} /> Logout
+                    </button>
+                )}
+                {!currentUser && (
+                    <button 
+                        onClick={() => setIsLoginOpen(true)}
+                        className="hidden md:flex items-center gap-2 text-xs font-black text-accent uppercase tracking-widest bg-accent/5 px-4 py-2 rounded-full border border-accent/10"
+                    >
+                        Login
+                    </button>
+                )}
+                <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Active</span>
+                </div>
             </div>
         </header>
       )}
 
-      <main className="flex-1 pb-24 relative">
+      {/* Persistent padding to account for the fixed bottom navigation bar */}
+      <main className="flex-1 pb-[calc(80px+env(safe-area-inset-bottom))] relative">
         {isActionInProgress && (
             <div className="fixed inset-0 bg-white/60 backdrop-blur-[1px] z-50 flex items-center justify-center">
                 <Loader2 className="w-8 h-8 animate-spin text-accent" />
             </div>
         )}
 
-        {/* View: PAYMENT PAGE */}
-        {view === 'PAYMENT' && pendingBookingDetails && (
-            <div className="animate-in slide-in-from-bottom duration-300 min-h-screen bg-[#F9FAFB]">
-                <div className="bg-white px-4 py-4 flex items-center gap-4 border-b border-slate-100">
-                    <button onClick={() => navigateTo('HOME')}><ArrowLeft size={20} /></button>
-                    <h2 className="text-lg font-bold">Payment</h2>
+        {/* View: HOME */}
+        {view === 'HOME' && (
+          <div className="animate-in fade-in duration-500">
+            {/* HERO SLIDER */}
+            <section className="relative overflow-hidden h-[50vh] min-h-[380px]">
+                <div 
+                  className="flex transition-transform duration-1000 cubic-bezier(0.4, 0, 0.2, 1) h-full"
+                  style={{ transform: `translateX(-${currentHeroIndex * 100}%)` }}
+                >
+                    {heroServices.map((service) => (
+                        <div 
+                          key={service.id} 
+                          className="min-w-full h-full relative group cursor-pointer active:brightness-95 transition-all"
+                          onClick={() => handleBookService(service)}
+                        >
+                            <img src={service.image} className="w-full h-full object-cover" alt={service.name} />
+                            <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent" />
+                            
+                            <div className="absolute bottom-12 left-6 right-6">
+                                <div className="flex items-center gap-2 mb-2">
+                                    <span className="bg-accent text-white text-[9px] font-black uppercase tracking-[0.2em] px-4 py-1.5 rounded-full shadow-2xl">
+                                        Famous Choice
+                                    </span>
+                                    <div className="flex items-center gap-1 bg-white/10 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/20">
+                                        <Star size={10} className="fill-yellow-400 text-yellow-400" />
+                                        <span className="text-white text-[10px] font-black">{service.rating}</span>
+                                    </div>
+                                </div>
+                                <h3 className="text-3xl font-black text-white leading-tight mb-3 drop-shadow-2xl">{service.name}</h3>
+                                <p className="text-white/80 text-xs mb-5 max-w-[90%] font-medium leading-relaxed">Verified professionals at your doorstep.</p>
+                                
+                                <div className="flex items-center gap-4">
+                                    <button className="bg-white text-accent px-6 py-3 rounded-[16px] font-black text-[11px] shadow-2xl uppercase tracking-widest active:scale-95 transition-transform flex items-center gap-2">
+                                        Book Now <ChevronRight size={16} />
+                                    </button>
+                                    <div className="flex flex-col">
+                                        <span className="text-white/50 text-[8px] font-black uppercase tracking-widest">Starts at</span>
+                                        <span className="text-white text-lg font-black tracking-tighter">₹{service.price}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    ))}
                 </div>
 
-                <div className="p-4 space-y-4">
-                    <div className="bg-white rounded-uc p-4 border border-slate-100 uc-card-shadow">
+                <div className="absolute top-4 left-4 right-4 z-10">
+                    <form onSubmit={handleSearch} className="relative">
+                        <input 
+                            type="text" 
+                            placeholder="Search for a service..." 
+                            className="w-full h-12 bg-white/10 backdrop-blur-xl border border-white/20 rounded-[16px] px-10 text-xs text-white placeholder:text-white/60 shadow-2xl focus:outline-none focus:ring-2 focus:ring-white/30 transition-all font-medium"
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                        />
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-white/60" size={16} />
+                    </form>
+                </div>
+
+                <div className="absolute bottom-4 left-6 flex items-center gap-2">
+                    {heroServices.map((_, idx) => (
+                        <button 
+                            key={idx}
+                            onClick={(e) => { e.stopPropagation(); setCurrentHeroIndex(idx); }}
+                            className={`h-1 rounded-full transition-all duration-500 ${currentHeroIndex === idx ? 'w-8 bg-white' : 'w-2 bg-white/30'}`}
+                        />
+                    ))}
+                </div>
+            </section>
+
+            {/* CATEGORY GRID */}
+            <section className="px-6 py-12 bg-white">
+              <div className="flex flex-col items-center text-center mb-8">
+                  <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.4em] mb-2">Service Menu</h2>
+                  <p className="text-xl font-black text-slate-900">What are you looking for?</p>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                {CATEGORIES.map((cat, idx) => (
+                  <div 
+                    key={idx}
+                    onClick={() => {
+                        setSelectedCategory(cat);
+                        setFilteredServices(SERVICES.filter(s => s.category === cat));
+                        navigateTo('CATEGORY');
+                    }}
+                    className="flex flex-col items-center bg-slate-50 p-6 rounded-[32px] border border-slate-100 group active:scale-95 transition-all shadow-sm active:bg-accent/5 active:border-accent/10"
+                  >
+                     <div className="w-16 h-16 bg-white rounded-[24px] flex items-center justify-center mb-4 shadow-md group-hover:bg-accent/5 transition-colors border border-slate-50">
+                        {getCategoryIcon(cat)}
+                     </div>
+                     <span className="text-xs font-black text-slate-800 text-center leading-tight uppercase tracking-wide">
+                        {cat}
+                     </span>
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            {/* Trusted Experts Divider */}
+            <section className="py-8 bg-slate-50 text-center">
+                <div className="container mx-auto px-4">
+                    <div className="bg-white rounded-[32px] p-6 border border-slate-200/60 shadow-sm grid grid-cols-3 gap-4">
+                        <div className="flex flex-col items-center">
+                            <ShieldCheck size={24} className="text-accent mb-2" />
+                            <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest text-center">Verified</p>
+                        </div>
+                        <div className="flex flex-col items-center">
+                            <Clock size={24} className="text-accent mb-2" />
+                            <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest text-center">60-Min</p>
+                        </div>
+                        <div className="flex flex-col items-center">
+                            <CheckCircle2 size={24} className="text-accent mb-2" />
+                            <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest text-center">Guaranteed</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            {/* Mechanic Scrollable Row */}
+            <section className="py-12 bg-white">
+                <div className="px-6 mb-8 flex justify-between items-end">
+                   <div>
+                       <h2 className="text-2xl font-black text-slate-900 tracking-tight">Mechanic Experts</h2>
+                       <p className="text-xs text-slate-400 font-bold mt-1 uppercase tracking-widest">Fast repair in Kotma</p>
+                   </div>
+                </div>
+                <div className="flex overflow-x-auto gap-6 no-scrollbar px-6 pb-4">
+                    {SERVICES.filter(s => s.category === CategoryType.MECHANIC && !s.isHero).map(service => (
+                        <div key={service.id} className="min-w-[240px] bg-white rounded-[32px] border border-slate-100 p-5 shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col justify-between">
+                            <div>
+                                <img src={service.image} className="w-full h-40 object-cover rounded-[24px] mb-4" alt={service.name} />
+                                <h3 className="font-black text-lg text-slate-800 leading-tight line-clamp-2">{service.name}</h3>
+                                <div className="flex items-center gap-2 mt-3">
+                                    <div className="bg-green-50 px-2 py-1 rounded-full flex items-center gap-1">
+                                        <Star size={12} className="fill-green-600 text-green-600" />
+                                        <span className="text-[10px] font-black text-green-600">{service.rating}</span>
+                                    </div>
+                                    <span className="text-[9px] text-slate-400 font-black uppercase tracking-widest ml-auto">{service.duration}</span>
+                                </div>
+                            </div>
+                            <div className="mt-6 flex items-center justify-between">
+                                <div className="flex flex-col">
+                                    <span className="text-[9px] text-slate-400 font-black uppercase tracking-widest mb-0.5">Price</span>
+                                    <span className="text-xl font-black text-slate-900 font-mono tracking-tighter">₹{service.price}</span>
+                                </div>
+                                <button 
+                                    onClick={() => handleBookService(service)}
+                                    className="bg-accent text-white h-12 w-12 rounded-[16px] flex items-center justify-center active:scale-90 shadow-xl shadow-accent/25 transition-all"
+                                >
+                                    <Plus size={24} strokeWidth={3} />
+                                </button>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </section>
+          </div>
+        )}
+
+        {/* View: CATEGORY */}
+        {view === 'CATEGORY' && (
+            <div className="animate-in slide-in-from-right-4 duration-300 min-h-screen bg-white">
+                <div className="sticky top-[calc(env(safe-area-inset-top)+32px+64px)] z-30 bg-white border-b border-slate-50 px-6 py-6 flex items-center gap-4">
+                   <button onClick={() => navigateTo('HOME')} className="p-2 bg-slate-50 rounded-full active:bg-slate-100"><ArrowLeft size={22} /></button>
+                   <div>
+                       <h2 className="text-2xl font-black text-slate-900 tracking-tight">{selectedCategory}</h2>
+                       <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mt-1">Select your expert service</p>
+                   </div>
+                </div>
+                <div className="p-6 space-y-4">
+                    {filteredServices.map(service => (
+                        <ServiceCard key={service.id} service={service} onBook={handleBookService} />
+                    ))}
+                </div>
+            </div>
+        )}
+
+        {/* View: PAYMENT */}
+        {view === 'PAYMENT' && pendingBookingDetails && (
+            <div className="animate-in slide-in-from-bottom duration-300 min-h-screen bg-[#F9FAFB]">
+                <div className="bg-white px-6 py-6 flex items-center gap-4 border-b border-slate-100 shadow-sm">
+                    <button onClick={() => navigateTo('HOME')} className="p-2 bg-slate-50 rounded-full"><ArrowLeft size={18} /></button>
+                    <h2 className="text-xl font-black">Secure Checkout</h2>
+                </div>
+
+                <div className="p-6 space-y-6">
+                    <div className="bg-white rounded-[32px] p-6 border border-slate-100 shadow-sm">
                         <div className="flex gap-4 items-center">
-                            <div className="bg-slate-50 p-2 rounded-xl">
+                            <div className="bg-slate-50 p-4 rounded-[16px]">
                                 {getCategoryIcon(pendingBookingDetails.category)}
                             </div>
                             <div className="flex-1">
-                                <h3 className="font-bold text-slate-900">{pendingBookingDetails.serviceName}</h3>
-                                <p className="text-xs text-slate-500">{pendingBookingDetails.date} • {pendingBookingDetails.time}</p>
+                                <h3 className="font-black text-lg text-slate-900 leading-tight">{pendingBookingDetails.serviceName}</h3>
+                                <div className="flex items-center gap-2 mt-1">
+                                    <Calendar size={12} className="text-slate-400" />
+                                    <p className="text-[10px] text-slate-500 font-bold uppercase tracking-tight">{pendingBookingDetails.date} • {pendingBookingDetails.time}</p>
+                                </div>
                             </div>
-                            <span className="font-bold">₹{pendingBookingDetails.price}</span>
-                        </div>
-                        <div className="mt-4 pt-4 border-t border-slate-50 flex items-center gap-2 text-xs text-slate-400">
-                            <MapPin size={12} className="text-accent" />
-                            <span className="truncate">{pendingBookingDetails.address}</span>
+                            <span className="font-black text-xl tracking-tighter">₹{pendingBookingDetails.price}</span>
                         </div>
                     </div>
 
-                    <div className="space-y-3">
-                        <h3 className="text-sm font-extrabold text-slate-900 uppercase tracking-wider px-1">Payment Options</h3>
+                    <div className="space-y-4">
+                        <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] px-3">Payment Method</h3>
                         
                         <div 
                             onClick={() => setPaymentMethod('RAZORPAY')}
-                            className={`bg-white rounded-uc p-4 border flex items-center gap-4 cursor-pointer transition-all ${paymentMethod === 'RAZORPAY' ? 'border-accent bg-purple-50' : 'border-slate-100'}`}
+                            className={`bg-white rounded-[24px] p-6 border-2 flex items-center gap-4 cursor-pointer transition-all ${paymentMethod === 'RAZORPAY' ? 'border-accent bg-accent/[0.02]' : 'border-slate-100'}`}
                         >
-                            <div className={`p-2 rounded-full ${paymentMethod === 'RAZORPAY' ? 'bg-accent text-white' : 'bg-slate-100 text-slate-400'}`}>
-                                <CreditCard size={20} />
+                            <div className={`p-4 rounded-[16px] ${paymentMethod === 'RAZORPAY' ? 'bg-accent text-white' : 'bg-slate-100 text-slate-400'}`}>
+                                <CreditCard size={24} />
                             </div>
                             <div className="flex-1">
-                                <h4 className="font-bold text-sm">Online Payment (UPI/Cards)</h4>
-                                <p className="text-[10px] text-slate-500">Fast and secure via Razorpay</p>
+                                <h4 className="font-black text-base">Secure Online</h4>
+                                <p className="text-[9px] text-slate-500 font-black uppercase tracking-widest mt-1">UPI / Cards / Netbanking</p>
                             </div>
-                            <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${paymentMethod === 'RAZORPAY' ? 'border-accent' : 'border-slate-300'}`}>
-                                {paymentMethod === 'RAZORPAY' && <div className="w-2.5 h-2.5 bg-accent rounded-full" />}
+                            <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors ${paymentMethod === 'RAZORPAY' ? 'border-accent' : 'border-slate-300'}`}>
+                                {paymentMethod === 'RAZORPAY' && <div className="w-3.5 h-3.5 bg-accent rounded-full animate-in zoom-in" />}
                             </div>
                         </div>
 
                         <div 
                             onClick={() => setPaymentMethod('CASH')}
-                            className={`bg-white rounded-uc p-4 border flex items-center gap-4 cursor-pointer transition-all ${paymentMethod === 'CASH' ? 'border-accent bg-purple-50' : 'border-slate-100'}`}
+                            className={`bg-white rounded-[24px] p-6 border-2 flex items-center gap-4 cursor-pointer transition-all ${paymentMethod === 'CASH' ? 'border-accent bg-accent/[0.02]' : 'border-slate-100'}`}
                         >
-                            <div className={`p-2 rounded-full ${paymentMethod === 'CASH' ? 'bg-accent text-white' : 'bg-slate-100 text-slate-400'}`}>
-                                <Banknote size={20} />
+                            <div className={`p-4 rounded-[16px] ${paymentMethod === 'CASH' ? 'bg-accent text-white' : 'bg-slate-100 text-slate-400'}`}>
+                                <Banknote size={24} />
                             </div>
                             <div className="flex-1">
-                                <h4 className="font-bold text-sm">Pay After Service (Cash/UPI)</h4>
-                                <p className="text-[10px] text-slate-500">Pay directly to the professional</p>
+                                <h4 className="font-black text-base">Pay After Service</h4>
+                                <p className="text-[9px] text-slate-500 font-black uppercase tracking-widest mt-1">Cash or QR Scan</p>
                             </div>
-                            <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${paymentMethod === 'CASH' ? 'border-accent' : 'border-slate-300'}`}>
-                                {paymentMethod === 'CASH' && <div className="w-2.5 h-2.5 bg-accent rounded-full" />}
+                            <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors ${paymentMethod === 'CASH' ? 'border-accent' : 'border-slate-300'}`}>
+                                {paymentMethod === 'CASH' && <div className="w-3.5 h-3.5 bg-accent rounded-full animate-in zoom-in" />}
                             </div>
                         </div>
                     </div>
-
-                    <div className="bg-blue-50 p-4 rounded-uc border border-blue-100 flex gap-3">
-                        <ShieldCheck size={20} className="text-blue-600 flex-shrink-0" />
-                        <p className="text-[10px] text-blue-800 leading-relaxed font-medium">
-                            Urban Company's safety standard applies to every booking in Kotma. Your payment is safe and protected by our refund policies.
-                        </p>
-                    </div>
                 </div>
 
-                <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-slate-100 flex items-center justify-between z-50 pb-[env(safe-area-inset-bottom)]">
+                <div className="fixed bottom-[calc(88px+env(safe-area-inset-bottom))] left-0 right-0 p-6 bg-white border-t border-slate-100 flex items-center justify-between z-40 pb-[10px] shadow-2xl">
                     <div>
-                        <p className="text-[10px] text-slate-400 font-bold uppercase">To Pay</p>
-                        <p className="text-lg font-extrabold">₹{pendingBookingDetails.price}</p>
+                        <p className="text-[9px] text-slate-400 font-black uppercase tracking-widest mb-0.5">Final Amount</p>
+                        <p className="text-3xl font-black tracking-tighter">₹{pendingBookingDetails.price}</p>
                     </div>
                     <button 
                         onClick={handlePaymentSubmit}
-                        className="bg-accent text-white px-10 py-3.5 rounded-xl font-bold text-sm shadow-lg shadow-accent/20 active:bg-accent-hover flex items-center gap-2"
+                        className="bg-accent text-white px-8 py-4 rounded-[20px] font-black text-xs shadow-2xl shadow-accent/40 active:scale-95 transition-transform flex items-center gap-2"
                     >
-                        {paymentMethod === 'RAZORPAY' ? 'Proceed to Pay' : 'Confirm Booking'}
+                        {paymentMethod === 'RAZORPAY' ? 'Pay Now' : 'Place Order'}
                         <ChevronRight size={18} />
                     </button>
                 </div>
@@ -328,244 +545,95 @@ const App: React.FC = () => {
                     onDeleteUser={async (un) => { await api.deleteUser(un); refreshData(); }}
                     onAssignBooking={async (bid, pid) => { await api.updateBooking(bid, { status: 'ASSIGNED', providerId: pid }); refreshData(); }}
                 />
-            ) : (
+            ) : currentUser.role === 'PROVIDER' ? (
                 <ProviderDashboard 
                     user={currentUser} 
                     bookings={bookings} 
                     onAcceptBooking={async (bid) => { await api.updateBooking(bid, { status: 'ASSIGNED', providerId: currentUser.username }); refreshData(); }}
                 />
+            ) : (
+                <div className="p-8 bg-slate-50 min-h-screen">
+                    <div className="bg-white rounded-[40px] p-12 shadow-sm border border-slate-100 text-center">
+                        <div className="w-24 h-24 bg-accent/10 rounded-full flex items-center justify-center mx-auto mb-8 text-accent shadow-inner">
+                            <UserIcon size={48} />
+                        </div>
+                        <h2 className="text-3xl font-black text-slate-900 leading-tight">{currentUser.name}</h2>
+                        <p className="text-slate-400 font-bold mt-2 text-lg">+91 {currentUser.phone}</p>
+                        <div className="mt-12 space-y-3">
+                            <button 
+                                onClick={() => navigateTo('BOOKINGS')}
+                                className="w-full bg-slate-900 text-white py-5 rounded-[24px] text-xs font-black uppercase tracking-[0.15em] shadow-xl"
+                            >
+                                Track My Orders
+                            </button>
+                            <button 
+                                onClick={() => { setCurrentUser(null); navigateTo('HOME'); }}
+                                className="w-full bg-red-50 text-red-500 py-5 rounded-[24px] text-xs font-black uppercase tracking-[0.15em] border border-red-100"
+                            >
+                                Log Out Account
+                            </button>
+                        </div>
+                    </div>
+                </div>
             )
         )}
 
-        {/* View: BOOKINGS (Customer View) */}
+        {/* View: BOOKINGS */}
         {view === 'BOOKINGS' && (
             <div className="animate-in fade-in duration-300 min-h-screen bg-slate-50">
-                <div className="bg-white px-4 py-6 border-b border-slate-100 mb-2">
-                    <h2 className="text-2xl font-extrabold text-slate-900">Your Bookings</h2>
-                    <p className="text-xs text-slate-400 mt-1">Track your requests in Kotma.</p>
+                <div className="bg-white px-8 py-10 border-b border-slate-100 mb-2">
+                    <h2 className="text-3xl font-black text-slate-900 tracking-tight">Activity</h2>
+                    <p className="text-[10px] text-slate-400 font-black mt-2 uppercase tracking-[0.3em]">
+                        {currentUser ? `Orders for ${currentUser.phone}` : 'Sign in to see history'}
+                    </p>
                 </div>
-                
-                <div className="p-4 space-y-4">
-                    {bookings.length > 0 ? bookings.map((booking) => {
-                        const provider = PROVIDERS.find(p => p.id === booking.providerId) || users.find(u => u.username === booking.providerId);
-                        const isAssigned = booking.status === 'ASSIGNED';
-
-                        return (
-                            <div key={booking.id} className="bg-white rounded-uc p-5 shadow-sm border border-slate-100">
-                                <div className="flex justify-between items-start mb-4">
-                                    <div>
-                                        <h3 className="font-extrabold text-lg text-slate-900">{booking.serviceName}</h3>
-                                        <div className="flex items-center gap-2 text-xs text-slate-400 mt-1 uppercase font-bold tracking-tighter">
-                                            <Calendar size={12} /> {booking.date}
-                                            <Clock size={12} /> {booking.time}
-                                        </div>
+                <div className="p-6 space-y-4">
+                    {visibleBookings.length > 0 ? visibleBookings.map((booking) => (
+                        <div key={booking.id} className="bg-white rounded-[32px] p-8 border border-slate-100 shadow-sm hover:shadow-xl transition-all">
+                            <div className="flex justify-between items-start mb-6">
+                                <div>
+                                    <h3 className="font-black text-xl text-slate-900 leading-tight">{booking.serviceName}</h3>
+                                    <div className="flex flex-wrap items-center gap-3 text-[10px] text-slate-400 font-black uppercase tracking-widest mt-3">
+                                        <span className="flex items-center gap-1.5 bg-slate-50 px-3 py-1.5 rounded-full"><Calendar size={12} /> {booking.date}</span>
+                                        <span className="flex items-center gap-1.5 bg-slate-50 px-3 py-1.5 rounded-full"><Clock size={12} /> {booking.time}</span>
                                     </div>
-                                    <span className={`px-3 py-1 rounded-full text-[10px] font-extrabold tracking-tight ${isAssigned ? 'bg-green-50 text-green-600' : 'bg-orange-50 text-orange-600'}`}>
-                                        {isAssigned ? 'ASSIGNED' : 'PENDING'}
-                                    </span>
                                 </div>
-
-                                <div className="bg-slate-50 rounded-xl p-4 mt-2">
-                                    {isAssigned ? (
-                                        <div className="flex items-center gap-4">
-                                            <div className="w-12 h-12 bg-accent/10 rounded-full flex items-center justify-center text-accent">
-                                                <Users size={24} />
-                                            </div>
-                                            <div>
-                                                <p className="text-[10px] uppercase font-extrabold text-slate-400">Assigned Professional</p>
-                                                <h4 className="font-bold text-slate-800">{provider?.name || booking.providerId}</h4>
-                                                <p className="text-xs text-slate-500">
-                                                    {(provider as any)?.experience ? `${(provider as any).experience} Experience` : 'Verified Expert'}
-                                                </p>
-                                                <div className="mt-1 flex items-center gap-1 text-green-600 text-[10px] font-bold">
-                                                    <CheckCircle2 size={12} /> IDENTITY VERIFIED
-                                                </div>
-                                            </div>
-                                        </div>
-                                    ) : (
-                                        <div className="flex items-center gap-4 py-2">
-                                            <div className="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center text-slate-300 animate-pulse">
-                                                <Loader2 size={24} className="animate-spin" />
-                                            </div>
-                                            <div>
-                                                <p className="text-[10px] uppercase font-extrabold text-slate-400">Status</p>
-                                                <h4 className="font-bold text-slate-600">Looking for a professional...</h4>
-                                                <p className="text-[11px] text-slate-400">Usually assigned within 15 mins</p>
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-
-                                <div className="mt-4 pt-4 border-t border-slate-50 flex justify-between items-center">
-                                    <span className="text-sm font-bold text-slate-900 uppercase">Amount: ₹{booking.price}</span>
-                                    <button className="text-accent text-xs font-bold px-4 py-2 hover:bg-slate-50 rounded-lg">Help / Support</button>
-                                </div>
+                                <span className={`px-3 py-1.5 rounded-full text-[8px] font-black tracking-[0.2em] uppercase shadow-sm ${booking.status === 'ASSIGNED' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}`}>
+                                    {booking.status}
+                                </span>
                             </div>
-                        );
-                    }) : (
-                        <div className="flex flex-col items-center justify-center py-20 text-center px-8">
-                            <div className="bg-slate-100 w-20 h-20 rounded-full flex items-center justify-center mb-4 text-slate-300">
-                                <Calendar size={40} />
+                            <div className="pt-6 border-t border-slate-50 flex items-center justify-between">
+                                <div className="flex flex-col">
+                                    <span className="text-[9px] text-slate-400 font-black uppercase tracking-widest mb-0.5">Paid Amount</span>
+                                    <span className="text-slate-900 font-black text-xl tracking-tighter">₹{booking.price}</span>
+                                </div>
+                                <button className="bg-slate-900 text-white px-6 py-3 rounded-[16px] text-[9px] font-black uppercase tracking-widest shadow-xl active:scale-95 transition-transform">Details</button>
                             </div>
-                            <h3 className="text-xl font-bold text-slate-800">No bookings yet</h3>
-                            <p className="text-sm text-slate-400 mt-2">Book a service in Kotma to see it here.</p>
-                            <button 
-                                onClick={() => navigateTo('HOME')}
-                                className="mt-6 bg-accent text-white px-8 py-3 rounded-xl font-bold text-sm shadow-lg shadow-accent/20"
-                            >
-                                Book Now
-                            </button>
+                        </div>
+                    )) : (
+                        <div className="flex flex-col items-center justify-center py-24 text-center opacity-30">
+                            <Calendar size={80} className="mb-6 text-slate-200" />
+                            <p className="text-slate-400 font-black uppercase tracking-[0.3em] text-xs">Empty History</p>
                         </div>
                     )}
                 </div>
             </div>
         )}
 
-        {/* View: HOME */}
-        {view === 'HOME' && (
-          <div className="animate-in fade-in duration-500">
-            {/* Search Bar */}
-            <div className="px-4 pt-4 pb-2">
-                <form onSubmit={handleSearch} className="relative">
-                    <input 
-                        type="text" 
-                        placeholder="Search for 'refrigerator repair'" 
-                        className="w-full h-14 bg-white border border-slate-200 rounded-xl px-12 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-accent/20 transition-all"
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                    />
-                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
-                    {isSearching && <Loader2 className="absolute right-4 top-1/2 -translate-y-1/2 animate-spin text-accent" size={20} />}
-                </form>
-            </div>
-
-            <section className="px-4 py-4 mt-2">
-              <h2 className="text-lg font-extrabold text-slate-900 mb-6 px-1">Expert services in Kotma</h2>
-              <div className="grid grid-cols-2 gap-4">
-                {CATEGORIES.map((cat, idx) => (
-                  <div 
-                    key={idx}
-                    onClick={() => {
-                        setSelectedCategory(cat);
-                        setFilteredServices(SERVICES.filter(s => s.category === cat));
-                        navigateTo('CATEGORY');
-                    }}
-                    className="bg-white p-5 rounded-uc border border-slate-100 flex flex-col items-center justify-center gap-4 active:scale-95 transition-all uc-card-shadow"
-                  >
-                     <div className="w-16 h-16 bg-slate-50 rounded-2xl flex items-center justify-center">
-                        {getCategoryIcon(cat)}
-                     </div>
-                     <span className="text-[11px] font-bold text-slate-800 text-center leading-tight uppercase tracking-tight">{cat}</span>
-                  </div>
-                ))}
-              </div>
-            </section>
-
-            <section className="py-6 bg-[#FAFAFA]">
-                <div className="px-4 mb-4 flex justify-between items-center">
-                   <h2 className="text-lg font-extrabold text-slate-900">Appliance Repair</h2>
-                   <span className="text-accent text-xs font-bold uppercase" onClick={() => { setSelectedCategory(CategoryType.AC_APPLIANCE); setFilteredServices(SERVICES.filter(s => s.category === CategoryType.AC_APPLIANCE)); navigateTo('CATEGORY'); }}>See All</span>
-                </div>
-                <div className="flex overflow-x-auto gap-4 no-scrollbar px-4 pb-4">
-                    {SERVICES.filter(s => s.category === CategoryType.AC_APPLIANCE).slice(0, 6).map(service => (
-                        <div key={service.id} className="min-w-[220px] bg-white rounded-uc border border-slate-100 p-3 uc-card-shadow">
-                            <img src={service.image} className="w-full h-32 object-cover rounded-xl mb-3" />
-                            <h3 className="font-bold text-sm text-slate-800 line-clamp-1">{service.name}</h3>
-                            <p className="text-xs text-slate-400 mb-2">₹{service.price}</p>
-                            <button 
-                                onClick={() => handleBookService(service)}
-                                className="w-full py-2 bg-white border border-accent text-accent rounded-lg text-xs font-extrabold active:bg-accent active:text-white transition-colors"
-                            >
-                                ADD
-                            </button>
-                        </div>
-                    ))}
-                </div>
-            </section>
-          </div>
-        )}
-
-        {/* View: CATEGORY */}
-        {view === 'CATEGORY' && (
-            <div className="animate-in slide-in-from-right-4 duration-300">
-                <div className="sticky top-[calc(env(safe-area-inset-top)+32px+64px)] z-30 bg-white border-b border-slate-50 px-4 py-3 flex items-center gap-4">
-                   <button onClick={() => navigateTo('HOME')}><ArrowLeft size={20} /></button>
-                   <h2 className="text-lg font-bold">{selectedCategory}</h2>
-                </div>
-                
-                <div className="p-4 space-y-2">
-                    {filteredServices.map(service => (
-                        <ServiceCard key={service.id} service={service} onBook={handleBookService} />
-                    ))}
-                </div>
-            </div>
-        )}
-
-        {/* View: SEARCH RESULTS */}
-        {view === 'SEARCH_RESULTS' && (
-            <div className="container mx-auto px-4 pt-4 animate-in fade-in">
-                <div className="flex items-center gap-3 mb-6">
-                    <button onClick={() => navigateTo('HOME')}><ArrowLeft size={20} /></button>
-                    <div className="flex-1 relative">
-                        <input 
-                            type="text" 
-                            placeholder="Search for services" 
-                            className="w-full h-12 bg-slate-100 rounded-xl px-12 text-sm outline-none focus:ring-2 focus:ring-accent/20"
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            onKeyDown={(e) => e.key === 'Enter' && handleSearch(e)}
-                            autoFocus
-                        />
-                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                    </div>
-                </div>
-
-                {isSearching ? (
-                   <div className="flex flex-col items-center py-20"><Loader2 className="animate-spin text-accent" /></div>
-                ) : (
-                    <div className="space-y-6">
-                        {aiReasoning && (
-                          <div className="bg-purple-50 p-4 rounded-xl border border-purple-100 mb-6">
-                            <p className="text-xs text-purple-900 leading-relaxed italic">
-                              <Sparkles size={14} className="inline mr-1 text-accent" />
-                              {aiReasoning}
-                            </p>
-                          </div>
-                        )}
-                        {filteredServices.length > 0 ? filteredServices.map(s => (
-                            <ServiceCard key={s.id} service={s} onBook={handleBookService} />
-                        )) : (
-                          <div className="text-center py-12 text-slate-400">No services found for your search.</div>
-                        )}
-                    </div>
-                )}
-            </div>
-        )}
-
-        {view === 'REGISTER_PROFESSIONAL' && (
-            <RegisterProfessional onSubmit={async (d) => { await api.createRegistration(d); refreshData(); }} />
-        )}
       </main>
 
-      {/* Navigation & Login */}
-      {view !== 'PAYMENT' && (
-          <MobileBottomNav 
-            currentView={view} 
-            onNavigate={(v) => {
-              if (v === 'DASHBOARD' && !currentUser) {
-                setIsLoginOpen(true);
-              } else {
-                navigateTo(v);
-              }
-            }} 
-            isLoggedIn={!!currentUser} 
-          />
-      )}
+      {/* Persistent Bottom Navbar (Always Rendered & Visible) */}
+      <MobileBottomNav 
+        currentView={view} 
+        onNavigate={(v) => navigateTo(v)} 
+        isLoggedIn={!!currentUser} 
+      />
 
       {selectedService && (
         <BookingModal 
           service={selectedService} 
           isOpen={isBookingOpen} 
+          currentUser={currentUser}
           onClose={() => setIsBookingOpen(false)} 
           onConfirmBooking={async (details) => {
               setPendingBookingDetails(details);

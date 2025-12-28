@@ -14,16 +14,18 @@ export const CategoryType = {
   MISTRI: 'Mistri (Mason)',
   HOUSE_HELPER: 'House Helper (Bai)',
   WELDING: 'Welding & Fabrication',
-  ROOF_PANEL: 'Ceiling & Wall Panels'
+  ROOF_PANEL: 'Ceiling & Wall Panels',
+  MECHANIC: 'Mechanic & Services'
 } as const;
 
 export type CategoryType = typeof CategoryType[keyof typeof CategoryType];
 
-export type UserRole = 'ADMIN' | 'PROVIDER';
+export type UserRole = 'ADMIN' | 'PROVIDER' | 'CUSTOMER';
 
 export interface User {
-  username: string;
+  username?: string;
   password?: string;
+  phone?: string;
   role: UserRole;
   name: string;
   category?: CategoryType;
@@ -39,6 +41,7 @@ export interface Service {
   image: string;
   category: CategoryType;
   duration: string;
+  isHero?: boolean;
 }
 
 export interface Provider {
