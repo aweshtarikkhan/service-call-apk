@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { type BookingDetails, type RegistrationForm, type User, CategoryType } from '../types';
 import { CATEGORIES } from '../constants';
-import { UserPlus, ClipboardList, Briefcase, Plus, Trash2, ArrowRightLeft, Database, Calendar, Clock, CreditCard } from 'lucide-react';
+import { UserPlus, ClipboardList, Briefcase, Plus, Trash2, ArrowRightLeft, Database, Calendar, Clock, CreditCard, CheckCircle } from 'lucide-react';
 import { isSupabaseConfigured } from '../services/supabaseClient';
 
 interface AdminDashboardProps {
@@ -11,10 +11,10 @@ interface AdminDashboardProps {
   users: User[];
   onAddUser: (user: User) => void;
   onDeleteUser: (username: string) => void;
-  onAssignBooking: (bookingId: string, providerId: string) => void;
+  onUpdateBooking: (bookingId: string, updates: Partial<BookingDetails>) => void;
 }
 
-const AdminDashboard: React.FC<AdminDashboardProps> = ({ bookings, registrations, users, onAddUser, onDeleteUser, onAssignBooking }) => {
+const AdminDashboard: React.FC<AdminDashboardProps> = ({ bookings, registrations, users, onAddUser, onDeleteUser, onUpdateBooking }) => {
   const [activeTab, setActiveTab] = useState<'BOOKINGS' | 'REGISTRATIONS' | 'USERS'>('BOOKINGS');
   
   // User Creation State
@@ -95,7 +95,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ bookings, registrations
                                 <th className="p-4">Service & Price</th>
                                 <th className="p-4">Schedule</th>
                                 <th className="p-4">Assigned To</th>
-                                <th className="p-4">Quick Assign</th>
+                                <th className="p-4">Assign / Action</th>
                                 <th className="p-4 text-center">Status</th>
                             </tr>
                         </thead>
@@ -142,27 +142,47 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ bookings, registrations
                                         )}
                                     </td>
                                     <td className="p-4">
-                                        <div className="relative flex items-center gap-2">
-                                            <ArrowRightLeft size={14} className="text-slate-400" />
-                                            <select 
-                                                className="bg-white border border-slate-300 rounded px-2 py-1 text-xs w-32 outline-none focus:border-accent"
-                                                value={booking.providerId || ''}
-                                                onChange={(e) => onAssignBooking(booking.id, e.target.value)}
-                                            >
-                                                <option value="">Select Provider</option>
-                                                {users
-                                                    .filter(u => u.role === 'PROVIDER' && u.category === booking.category)
-                                                    .map(u => (
-                                                        <option key={u.username} value={u.username}>{u.name}</option>
-                                                    ))
-                                                }
-                                            </select>
+                                        <div className="flex flex-col gap-2">
+                                            {booking.status === 'PENDING' && (
+                                                <div className="relative flex items-center gap-2">
+                                                    <ArrowRightLeft size={14} className="text-slate-400" />
+                                                    <select 
+                                                        className="bg-white border border-slate-300 rounded px-2 py-1 text-xs w-32 outline-none focus:border-accent"
+                                                        value={booking.providerId || ''}
+                                                        onChange={(e) => onUpdateBooking(booking.id, { providerId: e.target.value, status: 'ASSIGNED' })}
+                                                    >
+                                                        <option value="">Select Provider</option>
+                                                        {users
+                                                            .filter(u => u.role === 'PROVIDER' && u.category === booking.category)
+                                                            .map(u => (
+                                                                <option key={u.username} value={u.username}>{u.name}</option>
+                                                            ))
+                                                        }
+                                                    </select>
+                                                </div>
+                                            )}
+                                            
+                                            {booking.status === 'ASSIGNED' && (
+                                                <button 
+                                                    onClick={() => onUpdateBooking(booking.id, { status: 'COMPLETED' })}
+                                                    className="bg-green-600 text-white px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-1.5 hover:bg-green-700 transition-colors shadow-sm"
+                                                >
+                                                    <CheckCircle size={14} /> Mark Completed
+                                                </button>
+                                            )}
+                                            
+                                            {booking.status === 'COMPLETED' && (
+                                                <span className="text-blue-500 font-bold text-[10px] uppercase flex items-center gap-1">
+                                                    <CheckCircle size={14} /> Finalized
+                                                </span>
+                                            )}
                                         </div>
                                     </td>
                                     <td className="p-4 text-center">
                                         <span className={`px-2 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider ${
                                             booking.status === 'PENDING' ? 'bg-yellow-100 text-yellow-700' :
-                                            booking.status === 'ASSIGNED' ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-600'
+                                            booking.status === 'ASSIGNED' ? 'bg-green-100 text-green-700' : 
+                                            booking.status === 'COMPLETED' ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-600'
                                         }`}>
                                             {booking.status}
                                         </span>
