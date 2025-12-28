@@ -248,22 +248,6 @@ const App: React.FC = () => {
             </div>
             
             <div className="flex items-center gap-4">
-                {currentUser && (
-                    <button 
-                        onClick={() => { setCurrentUser(null); navigateTo('HOME'); }}
-                        className="hidden md:flex items-center gap-2 text-xs font-black text-red-500 uppercase tracking-widest bg-red-50 px-4 py-2 rounded-full border border-red-100"
-                    >
-                        <LogOut size={14} /> Logout
-                    </button>
-                )}
-                {!currentUser && (
-                    <button 
-                        onClick={() => setIsLoginOpen(true)}
-                        className="hidden md:flex items-center gap-2 text-xs font-black text-accent uppercase tracking-widest bg-accent/5 px-4 py-2 rounded-full border border-accent/10"
-                    >
-                        Login
-                    </button>
-                )}
                 <div className="flex items-center gap-2">
                     <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
                     <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Active</span>
@@ -272,7 +256,6 @@ const App: React.FC = () => {
         </header>
       )}
 
-      {/* Persistent padding to account for the fixed bottom navigation bar */}
       <main className="flex-1 pb-[calc(80px+env(safe-area-inset-bottom))] relative">
         {isActionInProgress && (
             <div className="fixed inset-0 bg-white/60 backdrop-blur-[1px] z-50 flex items-center justify-center">
@@ -622,7 +605,7 @@ const App: React.FC = () => {
 
       </main>
 
-      {/* Persistent Bottom Navbar (Always Rendered & Visible) */}
+      {/* Persistent Bottom Navbar */}
       <MobileBottomNav 
         currentView={view} 
         onNavigate={(v) => navigateTo(v)} 
