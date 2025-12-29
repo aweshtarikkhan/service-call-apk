@@ -318,7 +318,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ bookings, registrations
                                     </div>
                                     {user.role !== 'ADMIN' && (
                                         <button 
-                                            onClick={() => onDeleteUser(user.username)}
+                                            onClick={() => user.username && onDeleteUser(user.username)}
                                             className="text-slate-300 hover:text-red-500 transition-colors p-1"
                                             title="Delete User"
                                         >

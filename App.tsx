@@ -524,15 +524,15 @@ const App: React.FC = () => {
                     bookings={bookings} 
                     registrations={registrations} 
                     users={users} 
-                    onAddUser={async (u) => { await api.createUser(u); refreshData(); }}
-                    onDeleteUser={async (un) => { await api.deleteUser(un); refreshData(); }}
-                    onAssignBooking={async (bid, pid) => { await api.updateBooking(bid, { status: 'ASSIGNED', providerId: pid }); refreshData(); }}
+                    onAddUser={async (u: User) => { await api.createUser(u); refreshData(); }}
+                    onDeleteUser={async (un: string) => { await api.deleteUser(un); refreshData(); }}
+                    onUpdateBooking={async (bid: string, updates: Partial<BookingDetails>) => { await api.updateBooking(bid, updates); refreshData(); }}
                 />
             ) : currentUser.role === 'PROVIDER' ? (
                 <ProviderDashboard 
                     user={currentUser} 
                     bookings={bookings} 
-                    onAcceptBooking={async (bid) => { await api.updateBooking(bid, { status: 'ASSIGNED', providerId: currentUser.username }); refreshData(); }}
+                    onAcceptBooking={async (bid: string) => { await api.updateBooking(bid, { status: 'ASSIGNED', providerId: currentUser.username }); refreshData(); }}
                 />
             ) : (
                 <div className="p-8 bg-slate-50 min-h-screen">
@@ -581,7 +581,11 @@ const App: React.FC = () => {
                                         <span className="flex items-center gap-1.5 bg-slate-50 px-3 py-1.5 rounded-full"><Clock size={12} /> {booking.time}</span>
                                     </div>
                                 </div>
-                                <span className={`px-3 py-1.5 rounded-full text-[8px] font-black tracking-[0.2em] uppercase shadow-sm ${booking.status === 'ASSIGNED' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}`}>
+                                <span className={`px-3 py-1.5 rounded-full text-[8px] font-black tracking-[0.2em] uppercase shadow-sm ${
+                                  booking.status === 'ASSIGNED' ? 'bg-green-100 text-green-700' : 
+                                  booking.status === 'COMPLETED' ? 'bg-blue-100 text-blue-700' :
+                                  'bg-orange-100 text-orange-700'
+                                }`}>
                                     {booking.status}
                                 </span>
                             </div>
