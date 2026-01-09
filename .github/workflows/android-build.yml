@@ -4,7 +4,6 @@ on:
     branches: [ main ]
 
 jobs:
-  # THIS IS YOUR ORIGINAL WORKING CODE - DO NOT CHANGE THIS
   build:
     runs-on: ubuntu-latest
     steps:
@@ -18,7 +17,7 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
-          java-version: '17'
+          java-version: '21'
           cache: 'gradle'
       - name: Install Dependencies
         run: npm install
@@ -41,7 +40,6 @@ jobs:
           name: app-debug
           path: android/app/build/outputs/apk/debug/app-debug.apk
 
-  # THIS IS THE NEW RELEASE JOB - RUNS SEPARATELY SO IT WON'T BREAK YOUR DEBUG BUILD
   release_build:
     runs-on: ubuntu-latest
     steps:
@@ -55,7 +53,7 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
-          java-version: '17'
+          java-version: '21'
           cache: 'gradle'
       - name: Install Dependencies
         run: npm install
@@ -69,7 +67,6 @@ jobs:
         run: npx cap sync android
 
       - name: Decode and Build Signed Release APK
-        # This step handles the 'massive text' keystore and signs the app
         run: |
           cd android
           echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > release-key.jks

@@ -16,10 +16,10 @@ android {
         }
     }
 
-    // This is the fixed section for Java 17 compatibility
+    // Fixed section for Java 21 compatibility
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_17
-        targetCompatibility JavaVersion.VERSION_17
+        sourceCompatibility JavaVersion.VERSION_21
+        targetCompatibility JavaVersion.VERSION_21
     }
 
     buildTypes {
